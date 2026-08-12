@@ -137,6 +137,8 @@ Third amendment (2026-08-11) — more widget kinds: the M2 "additional widget ki
 
 Fourth amendment (2026-08-12) — widget management in the customization window: a Widgets section lists the configured widgets with add (one starter template per kind, unit-tested valid), remove, and reorder — each operation writes [[widget]] tables through config.toml exactly like set_theme, so the watcher hot-reloads it as if hand-edited, and invalid entries in the file are left untouched (UI indices map onto valid entries only). Param editing (coords, URIs, labels) deliberately stays in config.toml until the M3 settings panel. Section order in the window: Theme, Widgets, Background.
 
+Fifth amendment (2026-08-12) — full widget param editing in the customization window (the param-editing half of the M3 settings panel, pulled forward for the non-technical end user): each widget row expands into a typed editor (text/number/select/checkbox per param), every change writes one key through config.toml, and edits that would invalidate a widget are rejected by the backend so the UI can never corrupt the config. `text_scale` is scoped to the panel surface only — the customization window renders at a fixed 16px base. The config file remains the power-user path; the window is now sufficient on its own.
+
 **M2 — beyond parity.** Album art, shuffle/repeat, seek bar, display picker UI, tray icon with quit/restart/open-config, further widget kinds beyond stats/text as demand appears.
 
 **M3 — shareable.** MSI/NSIS installer via Tauri bundler, code signing decision ({{CONFIRM}} — cert costs money), in-app touch settings panel that writes config.toml, scene.pkg auto-extract so users skip RePKG, README for non-dev HYTE owners.

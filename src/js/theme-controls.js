@@ -8,7 +8,7 @@ const ACCENT_PRESETS = ["#e4553b", "#3ba7e4", "#7bd88f", "#e4b13b", "#c678dd", "
 const SLIDERS = [
   ["Panel opacity", "panel_opacity", "--panel-opacity", 0, 1, 0.01, true],
   ["Background shade", "shade", "--shade", 0, 1, 0.01, false],
-  ["Text size", "text_scale", "--text-scale", 0.6, 1.6, 0.05, true],
+  ["Panel text size", "text_scale", "--text-scale", 0.6, 1.6, 0.05, true],
 ];
 
 export function initThemeControls(container, invoke) {

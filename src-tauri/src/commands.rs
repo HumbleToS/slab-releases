@@ -41,6 +41,19 @@ pub async fn widget_move(app: AppHandle, index: usize, up: bool) -> Result<(), S
     widget_op(app, move |dir| crate::config::move_widget(dir, index, up)).await
 }
 
+#[tauri::command]
+pub async fn widget_set(
+    app: AppHandle,
+    index: usize,
+    key: String,
+    value: serde_json::Value,
+) -> Result<(), String> {
+    widget_op(app, move |dir| {
+        crate::config::set_widget_value(dir, index, &key, &value)
+    })
+    .await
+}
+
 async fn widget_op<F>(app: AppHandle, op: F) -> Result<(), String>
 where
     F: FnOnce(&std::path::Path) -> Result<(), String> + Send + 'static,
