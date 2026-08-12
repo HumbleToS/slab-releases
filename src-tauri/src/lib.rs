@@ -252,6 +252,7 @@ pub fn run() {
             commands::widget_add,
             commands::widget_remove,
             commands::widget_move,
+            commands::widget_set,
         ])
         .setup(|app| {
             install_panic_logger();

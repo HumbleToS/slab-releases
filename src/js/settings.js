@@ -85,6 +85,131 @@ function highlight() {
 
 const WIDGET_KINDS = ["clock", "media", "weather", "shortcut", "stats", "text"];
 
+const ICON_OPTIONS = [
+  "app",
+  "discord",
+  "steam",
+  "spotify",
+  "globe",
+  "folder",
+  "gamepad",
+  "terminal",
+  "music",
+];
+
+/* Editable params per kind. `type` decides the control; every change writes
+   one key through widget_set — invalid values are rejected by the backend
+   and the field snaps back on the next state push. */
+const WIDGET_FIELDS = {
+  clock: [
+    { key: "format", label: "Format", type: "select", options: ["12h", "24h"] },
+    { key: "show_date", label: "Show date", type: "bool" },
+  ],
+  media: [],
+  weather: [
+    { key: "label", label: "Location name", type: "text" },
+    { key: "lat", label: "Latitude", type: "number" },
+    { key: "lon", label: "Longitude", type: "number" },
+    {
+      key: "unit",
+      label: "Unit",
+      type: "select",
+      options: ["fahrenheit", "celsius"],
+    },
+  ],
+  shortcut: [
+    { key: "label", label: "Label", type: "text" },
+    { key: "uri", label: "Opens (app, folder, or URL)", type: "text" },
+    { key: "icon", label: "Icon", type: "select", options: ICON_OPTIONS },
+  ],
+  stats: [
+    { key: "show_cpu", label: "CPU meter", type: "bool" },
+    { key: "show_ram", label: "RAM meter", type: "bool" },
+    { key: "show_disk", label: "Drive meter", type: "bool" },
+    { key: "disk", label: "Drive letter", type: "text" },
+    { key: "disk_label", label: "Drive meter name", type: "text" },
+  ],
+  text: [
+    { key: "text", label: "Text", type: "text" },
+    {
+      key: "size",
+      label: "Size",
+      type: "select",
+      options: ["small", "medium", "large"],
+    },
+    { key: "align", label: "Align", type: "select", options: ["left", "center"] },
+  ],
+};
+
+let expandedWidget = null; // index of the row whose editor is open
+
+const pendingWidgetWrites = new Map();
+function writeWidget(index, key, value) {
+  const id = `${index}:${key}`;
+  clearTimeout(pendingWidgetWrites.get(id));
+  pendingWidgetWrites.set(
+    id,
+    setTimeout(() => invoke("widget_set", { index, key, value }), 300)
+  );
+}
+
+function buildField(index, widget, field) {
+  const wrap = el("label", "widget-field");
+  wrap.append(el("span", "widget-field-label dim", field.label));
+  let input;
+  if (field.type === "select") {
+    input = document.createElement("select");
+    for (const option of field.options) {
+      const node = document.createElement("option");
+      node.value = option;
+      node.textContent = option;
+      input.append(node);
+    }
+    input.value = widget[field.key];
+    input.addEventListener("change", () =>
+      writeWidget(index, field.key, input.value)
+    );
+  } else if (field.type === "bool") {
+    input = document.createElement("input");
+    input.type = "checkbox";
+    input.checked = Boolean(widget[field.key]);
+    input.addEventListener("change", () =>
+      writeWidget(index, field.key, input.checked)
+    );
+    wrap.classList.add("widget-field-bool");
+  } else {
+    input = document.createElement("input");
+    input.type = "text";
+    input.value = widget[field.key] ?? "";
+    input.addEventListener("input", () => {
+      if (field.type === "number") {
+        const number = parseFloat(input.value);
+        if (!Number.isFinite(number)) return; // wait for a complete number
+        writeWidget(index, field.key, number);
+      } else {
+        writeWidget(index, field.key, input.value);
+      }
+    });
+  }
+  wrap.append(input);
+  return wrap;
+}
+
+function buildEditor(index, widget) {
+  const editor = el("div", "widget-editor");
+  const fields = WIDGET_FIELDS[widget.kind] || [];
+  if (!fields.length) {
+    editor.append(
+      el("div", "widget-summary dim", "Nothing to configure — it just works.")
+    );
+    return editor;
+  }
+  for (const field of fields) {
+    editor.append(buildField(index, widget, field));
+  }
+  return editor;
+}
+
 function widgetSummary(widget) {
   switch (widget.kind) {
     case "clock":
@@ -108,31 +233,53 @@ function widgetSummary(widget) {
 
 function renderWidgets(widgets) {
   const list = document.getElementById("widget-list");
+  // Re-rendering under a focused field would eat the user's typing; the
+  // state that matters lands on the next push after they blur.
+  const active = document.activeElement;
+  if (list.contains(active) && active.matches("input, select")) return;
   list.replaceChildren();
   widgets.forEach((widget, index) => {
+    const item = el("div", "widget-item");
     const row = el("div", "widget-row");
     row.append(
+      el("span", "widget-caret dim", expandedWidget === index ? "▾" : "▸"),
       el("span", "widget-kind", widget.kind),
       el("span", "widget-summary dim", widgetSummary(widget))
     );
+    row.addEventListener("click", () => {
+      expandedWidget = expandedWidget === index ? null : index;
+      renderWidgets(widgets);
+    });
     const actions = el("div", "widget-actions");
     const button = (label, title, disabled, onClick) => {
       const b = el("button", "widget-action", label);
       b.type = "button";
       b.title = title;
       b.disabled = disabled;
-      b.addEventListener("click", onClick);
+      b.addEventListener("click", (e) => {
+        e.stopPropagation(); // don't toggle the editor
+        onClick();
+      });
       actions.append(b);
     };
-    button("↑", "Move up", index === 0, () =>
-      invoke("widget_move", { index, up: true })
-    );
-    button("↓", "Move down", index === widgets.length - 1, () =>
-      invoke("widget_move", { index, up: false })
-    );
-    button("✕", "Remove", false, () => invoke("widget_remove", { index }));
+    button("↑", "Move up", index === 0, () => {
+      if (expandedWidget === index) expandedWidget = index - 1;
+      invoke("widget_move", { index, up: true });
+    });
+    button("↓", "Move down", index === widgets.length - 1, () => {
+      if (expandedWidget === index) expandedWidget = index + 1;
+      invoke("widget_move", { index, up: false });
+    });
+    button("✕", "Remove", false, () => {
+      expandedWidget = null;
+      invoke("widget_remove", { index });
+    });
     row.append(actions);
-    list.append(row);
+    item.append(row);
+    if (expandedWidget === index) {
+      item.append(buildEditor(index, widget));
+    }
+    list.append(item);
   });
   if (!widgets.length) {
     list.append(el("div", "widget-summary dim", "No widgets — add one below."));

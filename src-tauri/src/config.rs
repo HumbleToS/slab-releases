@@ -401,6 +401,44 @@ fn file_index(tables: &toml_edit::ArrayOfTables, ui_index: usize) -> Result<usiz
 
 /// Append a starter widget of `kind`, writing through config.toml so the
 /// watcher applies it like a hand edit.
+/// Set one param of the widget at `ui_index`, in place, preserving comments.
+/// The edit must leave the widget valid — a value that would make `parse`
+/// skip the widget is rejected and the file is left untouched. This is what
+/// lets the customization window offer full editing to non-technical users
+/// without ever being able to corrupt the config.
+pub fn set_widget_value(
+    dir: &Path,
+    ui_index: usize,
+    key: &str,
+    value: &serde_json::Value,
+) -> Result<(), String> {
+    if key == "kind" {
+        return Err("kind is structural — remove the widget and add another".into());
+    }
+    let entry: toml_edit::Value = match value {
+        serde_json::Value::String(s) => s.as_str().into(),
+        serde_json::Value::Bool(b) => (*b).into(),
+        serde_json::Value::Number(n) => n.as_f64().ok_or("bad number")?.into(),
+        _ => return Err(format!("widget.{key} needs a string, number, or bool")),
+    };
+    let path = dir.join(CONFIG_FILE);
+    let mut doc = load_doc(&path)?;
+    let tables = widget_tables(&mut doc);
+    let raw = file_index(tables, ui_index)?;
+    let table = tables.get_mut(raw).ok_or("widget vanished")?;
+    table[key] = toml_edit::value(entry);
+    let still_valid = toml::from_str::<toml::Value>(&table.to_string())
+        .ok()
+        .as_ref()
+        .and_then(parse_widget)
+        .is_some();
+    if !still_valid {
+        // doc is discarded, the file keeps its previous contents
+        return Err(format!("widget.{key}: that value isn't valid here"));
+    }
+    save_doc(&path, &doc)
+}
+
 pub fn add_widget(dir: &Path, kind: &str) -> Result<(), String> {
     let template = WIDGET_TEMPLATES
         .iter()
@@ -795,6 +833,55 @@ mod tests {
         assert!(matches!(config.widgets[0], Widget::Clock { .. }));
         assert!(move_widget(&dir, 0, true).is_err(), "first can't move up");
         assert!(move_widget(&dir, 3, false).is_err(), "last can't move down");
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn set_widget_value_edits_params_in_place() {
+        let dir = scratch_dir("set-widget");
+        fs::write(dir.join(CONFIG_FILE), DEFAULT_CONFIG).unwrap();
+        // shortcut is widget 3: retitle it and repoint it
+        set_widget_value(&dir, 3, "label", &serde_json::json!("Steam")).unwrap();
+        set_widget_value(&dir, 3, "uri", &serde_json::json!("steam://open/games")).unwrap();
+        set_widget_value(&dir, 3, "icon", &serde_json::json!("steam")).unwrap();
+        // clock format flips, weather moves
+        set_widget_value(&dir, 0, "format", &serde_json::json!("24h")).unwrap();
+        set_widget_value(&dir, 0, "show_date", &serde_json::json!(false)).unwrap();
+        set_widget_value(&dir, 2, "lat", &serde_json::json!(35.1)).unwrap();
+        let text = fs::read_to_string(dir.join(CONFIG_FILE)).unwrap();
+        assert!(text.contains("# Slab configuration"), "comments preserved");
+        let config = parse(&text).unwrap();
+        assert!(matches!(
+            &config.widgets[3],
+            Widget::Shortcut { label, uri, icon }
+                if label == "Steam" && uri == "steam://open/games" && icon == "steam"
+        ));
+        assert!(matches!(
+            config.widgets[0],
+            Widget::Clock {
+                format: ClockFormat::TwentyFour,
+                show_date: false
+            }
+        ));
+        assert!(matches!(config.widgets[2], Widget::Weather { lat, .. } if lat == 35.1));
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn set_widget_value_rejects_invalidating_edits() {
+        let dir = scratch_dir("set-widget-bad");
+        fs::write(dir.join(CONFIG_FILE), DEFAULT_CONFIG).unwrap();
+        let before = fs::read_to_string(dir.join(CONFIG_FILE)).unwrap();
+        // weather lat must stay a number; kind is untouchable; bad index errors
+        assert!(set_widget_value(&dir, 2, "lat", &serde_json::json!("north")).is_err());
+        assert!(set_widget_value(&dir, 0, "kind", &serde_json::json!("media")).is_err());
+        assert!(set_widget_value(&dir, 9, "label", &serde_json::json!("x")).is_err());
+        assert!(set_widget_value(&dir, 0, "format", &serde_json::json!("13h")).is_err());
+        assert_eq!(
+            fs::read_to_string(dir.join(CONFIG_FILE)).unwrap(),
+            before,
+            "rejected edits must not touch the file"
+        );
         let _ = fs::remove_dir_all(&dir);
     }
 

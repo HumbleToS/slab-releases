@@ -2,8 +2,10 @@
    the 96px touch sizing is a dashboard-surface rule, relaxed here. */
 
 html {
-  /* Fixed type scale here — vw sizing is for the dashboard surface. */
-  font-size: calc(16px * var(--text-scale, 1));
+  /* Fixed type scale: the theme's text_scale sizes the dashboard panel,
+     not this window — at 1.6x the whole editor turned clunky and wasteful.
+     This surface is a desktop app; 16px is 16px. */
+  font-size: 16px;
 }
 
 body.settings-page {
@@ -124,14 +126,68 @@ body.settings-page {
   gap: 0.5rem;
 }
 
+.widget-item {
+  border: 1px solid var(--hairline);
+  border-radius: calc(var(--radius) * 0.5);
+  background: rgb(var(--panel-rgb) / var(--panel-opacity));
+}
+
 .widget-row {
   display: flex;
   align-items: center;
   gap: 1rem;
-  padding: 0.65rem 0.65rem 0.65rem 1.2rem;
+  padding: 0.65rem 0.65rem 0.65rem 1rem;
+  cursor: pointer;
+}
+
+.widget-caret {
+  width: 1rem;
+  font-size: 0.8rem;
+}
+
+.widget-editor {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));
+  gap: 0.9rem 1.2rem;
+  padding: 0.4rem 1.2rem 1.1rem 2rem;
+}
+
+.widget-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.widget-field-label {
+  font-size: 0.85rem;
+}
+
+.widget-field input[type="text"],
+.widget-field select {
+  padding: 0.55rem 0.75rem;
   border: 1px solid var(--hairline);
-  border-radius: calc(var(--radius) * 0.5);
-  background: rgb(var(--panel-rgb) / var(--panel-opacity));
+  border-radius: calc(var(--radius) * 0.4);
+  background: rgb(var(--fg-rgb) / 0.06);
+  color: inherit;
+  font: inherit;
+  font-size: 0.95rem;
+}
+
+.widget-field select option {
+  background: rgb(var(--panel-rgb));
+  color: rgb(var(--fg-rgb));
+}
+
+.widget-field-bool {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.7rem;
+}
+
+.widget-field-bool input {
+  width: 1.2rem;
+  height: 1.2rem;
+  accent-color: var(--accent);
 }
 
 .widget-kind {
