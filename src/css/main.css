@@ -13,6 +13,12 @@
   -webkit-touch-callout: none;
 }
 
+/* `hidden` must always win — flex/grid display rules would otherwise
+   override the attribute (e.g. media controls showing on the empty state). */
+[hidden] {
+  display: none !important;
+}
+
 html {
   /* Width-proportional type scale: 16px at the 1100px design width, adapting
      to whatever resolution the panel actually reports (e.g. 682x2560).
@@ -80,7 +86,7 @@ body {
   overscroll-behavior: contain;
   display: flex;
   flex-direction: column;
-  gap: 3rem;
+  gap: 2.75rem;
   padding: 4.5rem 4rem;
 }
 
@@ -95,6 +101,8 @@ body {
   border: 1px solid var(--hairline);
   border-radius: var(--radius);
   padding: 2.5rem 2.75rem;
+  /* Faint top edge-light sells the glass without inventing a color. */
+  box-shadow: inset 0 1px 0 rgb(var(--fg-rgb) / 0.05);
 }
 
 .dim {
@@ -116,20 +124,23 @@ body {
   font-weight: 200;
   line-height: 1;
   letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
   display: flex;
   align-items: baseline;
-  gap: 1.25rem;
+  gap: 1.5rem;
 }
 
 .clock-meridiem {
-  font-size: 3rem;
+  font-size: 2.6rem;
   font-weight: 300;
+  letter-spacing: 0.1em;
 }
 
 .clock-date {
-  margin-top: 1.5rem;
-  font-size: 2.1rem;
+  margin-top: 1.25rem;
+  font-size: 1.9rem;
   font-weight: 300;
+  letter-spacing: 0.02em;
 }
 
 /* ---------- media ---------- */
@@ -166,8 +177,20 @@ body {
 
 .media-controls {
   display: flex;
-  gap: 1.75rem;
-  margin-top: 2.25rem;
+  justify-content: center;
+  gap: 2.25rem;
+  margin-top: 2.75rem;
+}
+
+/* Round, equal transport buttons; the play/pause in the middle leads. */
+.media-controls button {
+  width: 6.5rem;
+  height: 6.5rem;
+  border-radius: 50%;
+}
+
+.media-controls button:nth-child(2) {
+  background: rgb(var(--fg-rgb) / 0.12);
 }
 
 /* ---------- touch controls (≥90px targets, pressed states) ---------- */
@@ -194,8 +217,8 @@ button:active,
 }
 
 button svg {
-  width: 2.5rem;
-  height: 2.5rem;
+  width: 2.6rem;
+  height: 2.6rem;
   fill: currentcolor;
 }
 
@@ -209,9 +232,10 @@ button svg {
 }
 
 .weather-temp {
-  font-size: 4.8rem;
+  font-size: 5.4rem;
   font-weight: 200;
   line-height: 1;
+  font-variant-numeric: tabular-nums;
 }
 
 .weather-condition {
@@ -223,15 +247,17 @@ button svg {
 .weather-meta {
   display: flex;
   justify-content: space-between;
-  margin-top: 1.25rem;
+  margin-top: 1.5rem;
   font-size: 1.35rem;
   font-weight: 300;
+  letter-spacing: 0.02em;
+  font-variant-numeric: tabular-nums;
 }
 
 .sun-track {
   position: relative;
   height: 3px;
-  margin-top: 2rem;
+  margin-top: 2.25rem;
   border-radius: 2px;
   background: var(--hairline);
 }
@@ -244,6 +270,7 @@ button svg {
   border-radius: 50%;
   transform: translate(-50%, -50%);
   background: var(--accent);
+  box-shadow: 0 0 14px var(--accent);
 }
 
 /* ---------- stats ---------- */
@@ -259,11 +286,11 @@ button svg {
 }
 
 .stats-name {
-  width: 6rem;
+  width: 9.5rem;
   flex-shrink: 0;
-  font-size: 1.35rem;
+  font-size: 1.3rem;
   font-weight: 400;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -303,12 +330,16 @@ button svg {
   padding: 0 0.5rem;
 }
 
+/* Small text reads as a section header: tuck the widget below it closer
+   so the label visually belongs to its group. */
 .text-small {
-  font-size: 1.5rem;
+  font-size: 1.35rem;
   font-weight: 400;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.2em;
   text-transform: uppercase;
-  opacity: 0.72;
+  opacity: 0.45;
+  margin-top: 0.75rem;
+  margin-bottom: -1.25rem;
 }
 
 .text-medium {
@@ -337,11 +368,22 @@ button svg {
   gap: 1.5rem;
 }
 
+/* Quiet by default — it's a corner affordance, not a widget. */
 #settings-toggle {
   border-radius: 50%;
   background: rgb(var(--panel-rgb) / var(--panel-opacity));
   backdrop-filter: blur(var(--blur));
   -webkit-backdrop-filter: blur(var(--blur));
+  opacity: 0.55;
+}
+
+#settings-toggle:active {
+  opacity: 1;
+}
+
+#settings-toggle svg {
+  width: 2.2rem;
+  height: 2.2rem;
 }
 
 #settings-card {
@@ -403,29 +445,35 @@ input[type="range"]::-webkit-slider-thumb {
 .shortcut-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 1.75rem;
+  gap: 1.5rem;
 }
 
+/* Horizontal pill: icon leading the label, no dead vertical space. */
 .tile {
   display: flex;
-  flex-direction: column;
   align-items: center;
-  justify-content: center;
-  gap: 1.25rem;
-  min-height: 170px;
-  padding: 2.25rem 1.5rem;
+  justify-content: flex-start;
+  gap: 1.75rem;
+  min-height: 120px;
+  padding: 1.75rem 2.25rem;
   transition: transform 80ms ease, background-color 80ms ease;
 }
 
 .tile svg,
 .tile img {
-  width: 3.5rem;
-  height: 3.5rem;
+  width: 3rem;
+  height: 3rem;
+  flex-shrink: 0;
   fill: currentcolor;
+  opacity: 0.85;
   pointer-events: none;
 }
 
 .tile-label {
-  font-size: 1.5rem;
+  font-size: 1.6rem;
   font-weight: 400;
+  letter-spacing: 0.01em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
