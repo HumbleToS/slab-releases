@@ -114,34 +114,90 @@ fn show_settings(app: &AppHandle) {
         let _ = window.unminimize();
         let _ = window.set_focus();
     }
+    // A long-lived tray process would otherwise sit on an old version for up
+    // to six hours; the moment the user looks at Slab is the moment fresh
+    // matters most.
+    check_for_update(app.clone());
 }
 
-/// Check the release feed now and every six hours; install silently and
-/// restart when a newer version exists. Zero-friction pillar: the case screen
-/// keeps itself current, nobody ships files around. Approved network call
-/// (maintainer-approved 2026-08-10) alongside Open-Meteo.
-fn start_updater(app: &AppHandle) {
+/// One update check may run at a time; extra triggers are dropped, not queued.
+static UPDATE_IN_FLIGHT: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
+#[derive(Clone, serde::Serialize)]
+struct UpdateStatus {
+    /// "checking" | "installing" | "current" | "error"
+    state: &'static str,
+    version: Option<String>,
+}
+
+/// The settings window renders these so update activity is visible instead
+/// of silent — "nothing ever looks updated" was a real field complaint.
+fn emit_update_status(app: &AppHandle, state: &'static str, version: Option<String>) {
+    if let Err(e) = app.emit("update-status", &UpdateStatus { state, version }) {
+        log::warn!("could not emit update-status: {e}");
+    }
+}
+
+/// Check the feed once; install silently and restart when a newer version
+/// exists. Emits `update-status` along the way.
+pub(crate) fn check_for_update(app: AppHandle) {
+    use std::sync::atomic::Ordering;
+    if UPDATE_IN_FLIGHT.swap(true, Ordering::SeqCst) {
+        return;
+    }
+    tauri::async_runtime::spawn(async move {
+        run_update_check(&app).await;
+        UPDATE_IN_FLIGHT.store(false, Ordering::SeqCst);
+    });
+}
+
+async fn run_update_check(app: &AppHandle) {
     use tauri_plugin_updater::UpdaterExt;
+    emit_update_status(app, "checking", None);
+    match app.updater() {
+        Ok(updater) => match updater.check().await {
+            Ok(Some(update)) => {
+                let version = update.version.clone();
+                log::info!("update {version} available; downloading");
+                emit_update_status(app, "installing", Some(version.clone()));
+                match update.download_and_install(|_, _| {}, || {}).await {
+                    Ok(()) => {
+                        // On Windows the installer handoff exits the process
+                        // before this line; it runs on other platforms.
+                        log::info!("update installed; restarting");
+                        app.restart();
+                    }
+                    Err(e) => {
+                        log::warn!("update install failed: {e}");
+                        emit_update_status(app, "error", Some(version));
+                    }
+                }
+            }
+            Ok(None) => {
+                log::debug!("no update available");
+                emit_update_status(app, "current", None);
+            }
+            Err(e) => {
+                log::warn!("update check failed: {e}");
+                emit_update_status(app, "error", None);
+            }
+        },
+        Err(e) => {
+            log::warn!("updater unavailable: {e}");
+            emit_update_status(app, "error", None);
+        }
+    }
+}
+
+/// Check the release feed now and every six hours; the settings window also
+/// triggers a check whenever it is shown. Zero-friction pillar: the case
+/// screen keeps itself current, nobody ships files around. Approved network
+/// call (maintainer-approved 2026-08-10) alongside Open-Meteo.
+fn start_updater(app: &AppHandle) {
     let app = app.clone();
     tauri::async_runtime::spawn(async move {
         loop {
-            match app.updater() {
-                Ok(updater) => match updater.check().await {
-                    Ok(Some(update)) => {
-                        log::info!("update {} available; downloading", update.version);
-                        match update.download_and_install(|_, _| {}, || {}).await {
-                            Ok(()) => {
-                                log::info!("update installed; restarting");
-                                app.restart();
-                            }
-                            Err(e) => log::warn!("update install failed: {e}"),
-                        }
-                    }
-                    Ok(None) => log::debug!("no update available"),
-                    Err(e) => log::warn!("update check failed: {e}"),
-                },
-                Err(e) => log::warn!("updater unavailable: {e}"),
-            }
+            check_for_update(app.clone());
             tokio::time::sleep(std::time::Duration::from_secs(6 * 60 * 60)).await;
         }
     });

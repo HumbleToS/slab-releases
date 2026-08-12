@@ -22,6 +22,9 @@ pub struct UiState {
     /// Where config.toml lives, so the customization window can offer
     /// "open config folder".
     pub config_dir: String,
+    /// Running app version, shown in the customization window header so an
+    /// applied update is visible at a glance.
+    pub version: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize)]
@@ -67,6 +70,7 @@ pub fn ui_state(app: &AppHandle, config: &Config) -> UiState {
             .app_config_dir()
             .map(|p| p.display().to_string())
             .unwrap_or_default(),
+        version: app.package_info().version.to_string(),
     }
 }
 

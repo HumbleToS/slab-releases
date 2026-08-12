@@ -45,6 +45,20 @@ body.settings-page {
   font-size: 0.95rem;
 }
 
+#app-version {
+  font-size: 1.1rem;
+}
+
+#settings-header-right {
+  display: flex;
+  align-items: center;
+  gap: 1.1rem;
+}
+
+#update-status {
+  font-size: 0.9rem;
+}
+
 #settings-main h2 {
   margin: 2.5rem 0 1rem;
   font-size: 1.05rem;
