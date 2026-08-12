@@ -108,16 +108,43 @@ pub fn create_dashboard_window(app: &AppHandle) -> tauri::Result<()> {
                 "no {PANEL_WIDTH}x{PANEL_HEIGHT} panel found; opening a scaled preview on the primary monitor"
             );
             let scale = preview_scale(app);
-            // vw-based layout: the miniature scales itself to its width, no
-            // webview zoom needed.
-            base_builder(app)
+            let window = base_builder(app)
                 .title("Slab (preview)")
                 .inner_size(PANEL_WIDTH as f64 * scale, PANEL_HEIGHT as f64 * scale)
-                .resizable(false)
                 .build()?;
+            // The page must lay out at the panel's full 1100 CSS-px design
+            // width — the vw-based type scales with any width, but fixed-px
+            // elements (≥90px touch targets, tiles, the gear) do not, and at
+            // miniature size they swallow the layout. Webview zoom shrinks
+            // the complete panel layout instead; resizing the window just
+            // changes the magnification.
+            sync_preview_zoom(&window);
+            let zoomed = window.clone();
+            window.on_window_event(move |event| {
+                if matches!(event, tauri::WindowEvent::Resized(_)) {
+                    sync_preview_zoom(&zoomed);
+                }
+            });
         }
     }
     Ok(())
+}
+
+/// Zoom so the preview window's current width shows the panel's whole
+/// 1100 CSS-px design width. Clamped to the webview's supported zoom range —
+/// below ~0.25 WebView2 silently clamps and the layout would crop instead.
+fn preview_zoom(logical_width: f64) -> f64 {
+    (logical_width / PANEL_WIDTH as f64).clamp(0.25, 5.0)
+}
+
+fn sync_preview_zoom(window: &WebviewWindow) {
+    let (Ok(size), Ok(scale_factor)) = (window.inner_size(), window.scale_factor()) else {
+        return;
+    };
+    if size.width == 0 {
+        return; // minimized
+    }
+    set_zoom(window, preview_zoom(f64::from(size.width) / scale_factor));
 }
 
 fn base_builder(app: &AppHandle) -> WebviewWindowBuilder<'_, tauri::Wry, AppHandle> {
@@ -138,7 +165,8 @@ pub fn create_settings_window(app: &AppHandle, visible: bool) -> tauri::Result<(
 }
 
 /// Preview scale: the whole 3840-tall panel fits in ~85% of the primary
-/// monitor's logical height, keeping the exact panel aspect ratio.
+/// monitor's logical height, keeping the exact panel aspect ratio. Floored at
+/// the webview's minimum zoom so the miniature never crops horizontally.
 fn preview_scale(app: &AppHandle) -> f64 {
     let logical_height = app
         .primary_monitor()
@@ -146,7 +174,7 @@ fn preview_scale(app: &AppHandle) -> f64 {
         .flatten()
         .map(|m| m.size().height as f64 / m.scale_factor())
         .unwrap_or(1080.0);
-    (logical_height * 0.85) / PANEL_HEIGHT as f64
+    ((logical_height * 0.85) / PANEL_HEIGHT as f64).max(0.25)
 }
 
 /// The monitor's work area (bounds minus any taskbar), physical pixels.
@@ -212,7 +240,21 @@ fn suppress_focus_steal(window: &WebviewWindow) {
 
 #[cfg(test)]
 mod tests {
-    use super::looks_like_panel;
+    use super::{looks_like_panel, preview_zoom};
+
+    #[test]
+    fn preview_zoom_tracks_window_width() {
+        assert_eq!(preview_zoom(1100.0), 1.0);
+        assert_eq!(preview_zoom(550.0), 0.5);
+        assert_eq!(preview_zoom(275.0), 0.25);
+    }
+
+    #[test]
+    fn preview_zoom_clamps_to_webview_limits() {
+        assert_eq!(preview_zoom(100.0), 0.25);
+        assert_eq!(preview_zoom(0.0), 0.25);
+        assert_eq!(preview_zoom(99000.0), 5.0);
+    }
 
     #[test]
     fn y70_modes_match_either_orientation() {
