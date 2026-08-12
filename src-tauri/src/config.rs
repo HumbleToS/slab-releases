@@ -57,6 +57,23 @@ kind = "shortcut"
 label = "Discord"
 uri = "discord://-/"
 icon = "discord"               # built-in icon name, or path to an svg
+
+# More widget kinds, ready to uncomment. Live CPU / RAM / drive meters:
+#
+# [[widget]]
+# kind = "stats"
+# show_cpu  = true
+# show_ram  = true
+# show_disk = true
+# disk = "C:"                    # which drive the disk meter watches
+
+# A static label — title a section of the column, or just say something:
+#
+# [[widget]]
+# kind = "text"
+# text = "arcade"
+# size = "medium"                # small / medium / large
+# align = "left"                 # or "center"
 "##;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -116,6 +133,23 @@ pub enum ClockFormat {
     TwentyFour,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "lowercase")]
+pub enum TextSize {
+    Small,
+    #[default]
+    Medium,
+    Large,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "lowercase")]
+pub enum TextAlign {
+    #[default]
+    Left,
+    Center,
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "lowercase")]
 pub enum Widget {
@@ -140,10 +174,31 @@ pub enum Widget {
         #[serde(default)]
         icon: String,
     },
+    Stats {
+        #[serde(default = "default_true")]
+        show_cpu: bool,
+        #[serde(default = "default_true")]
+        show_ram: bool,
+        #[serde(default)]
+        show_disk: bool,
+        #[serde(default = "default_disk")]
+        disk: String,
+    },
+    Text {
+        text: String,
+        #[serde(default)]
+        size: TextSize,
+        #[serde(default)]
+        align: TextAlign,
+    },
 }
 
 fn default_true() -> bool {
     true
+}
+
+fn default_disk() -> String {
+    "C:".into()
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize)]
@@ -375,6 +430,93 @@ mod tests {
                 show_date: true
             }
         ));
+    }
+
+    #[test]
+    fn stats_widget_takes_defaults() {
+        let config = parse("[[widget]]\nkind = \"stats\"\n").unwrap();
+        assert!(matches!(
+            &config.widgets[0],
+            Widget::Stats {
+                show_cpu: true,
+                show_ram: true,
+                show_disk: false,
+                disk
+            } if disk == "C:"
+        ));
+    }
+
+    #[test]
+    fn stats_widget_accepts_params() {
+        let config = parse(
+            "[[widget]]\nkind = \"stats\"\nshow_cpu = false\nshow_disk = true\ndisk = \"D:\"\n",
+        )
+        .unwrap();
+        assert!(matches!(
+            &config.widgets[0],
+            Widget::Stats {
+                show_cpu: false,
+                show_ram: true,
+                show_disk: true,
+                disk
+            } if disk == "D:"
+        ));
+    }
+
+    #[test]
+    fn text_widget_parses_size_and_align() {
+        let config =
+            parse("[[widget]]\nkind = \"text\"\ntext = \"arcade\"\nsize = \"large\"\nalign = \"center\"\n")
+                .unwrap();
+        assert!(matches!(
+            &config.widgets[0],
+            Widget::Text {
+                text,
+                size: TextSize::Large,
+                align: TextAlign::Center
+            } if text == "arcade"
+        ));
+    }
+
+    #[test]
+    fn text_widget_without_text_is_skipped() {
+        let config = parse(
+            "[[widget]]\nkind = \"text\"\nsize = \"small\"\n\
+             [[widget]]\nkind = \"text\"\ntext = \"ok\"\n",
+        )
+        .unwrap();
+        assert_eq!(config.widgets.len(), 1);
+        assert!(matches!(
+            &config.widgets[0],
+            Widget::Text {
+                text,
+                size: TextSize::Medium,
+                align: TextAlign::Left
+            } if text == "ok"
+        ));
+    }
+
+    #[test]
+    fn default_template_examples_stay_valid_when_uncommented() {
+        // The commented widget examples in DEFAULT_CONFIG must parse if a user
+        // uncomments them exactly as written. Prose comments (no `=`, no
+        // `[[widget]]`) stay comments.
+        let uncommented: String = DEFAULT_CONFIG
+            .lines()
+            .map(|line| {
+                let stripped = line.strip_prefix("# ").unwrap_or(line);
+                if stripped.starts_with("[[widget]]") || stripped.contains(" = ") {
+                    stripped
+                } else {
+                    line
+                }
+            })
+            .collect::<Vec<_>>()
+            .join("\n");
+        let config = parse(&uncommented).expect("uncommented examples must parse");
+        assert_eq!(config.widgets.len(), 6);
+        assert!(matches!(config.widgets[4], Widget::Stats { .. }));
+        assert!(matches!(config.widgets[5], Widget::Text { .. }));
     }
 
     #[test]

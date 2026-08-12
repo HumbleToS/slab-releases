@@ -2,6 +2,7 @@ mod commands;
 mod config;
 mod display;
 mod media;
+mod stats;
 mod theme;
 mod weather;
 
@@ -52,6 +53,11 @@ pub(crate) fn replay_caches(app: &AppHandle) {
     for update in lock(&state.weather).iter() {
         if let Err(e) = app.emit("weather-update", update) {
             log::warn!("could not replay weather-update: {e}");
+        }
+    }
+    for update in lock(&app.state::<stats::StatsState>().last).iter() {
+        if let Err(e) = app.emit("stats-update", update) {
+            log::warn!("could not replay stats-update: {e}");
         }
     }
     let last = lock(&app.state::<media::MediaState>().last).clone();
@@ -200,6 +206,7 @@ pub fn run() {
                 weather_refresh: refresh_tx,
             });
             app.manage(media::MediaState::default());
+            app.manage(stats::StatsState::default());
             display::create_dashboard_window(app.handle())?;
             // Wallpaper Engine model: launched by hand → the customization
             // window greets you; launched at login → straight to the tray.
@@ -209,6 +216,7 @@ pub fn run() {
             config::watch(app.handle().clone(), config_dir);
             weather::start(app.handle().clone(), refresh_rx);
             media::start(app.handle().clone());
+            stats::start(app.handle().clone());
             start_updater(app.handle());
             Ok(())
         })

@@ -246,6 +246,84 @@ button svg {
   background: var(--accent);
 }
 
+/* ---------- stats ---------- */
+
+.stats-row {
+  display: flex;
+  align-items: center;
+  gap: 1.75rem;
+}
+
+.stats-row + .stats-row {
+  margin-top: 2rem;
+}
+
+.stats-name {
+  width: 6rem;
+  flex-shrink: 0;
+  font-size: 1.35rem;
+  font-weight: 400;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.stats-meter {
+  flex: 1;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--hairline);
+  overflow: hidden;
+}
+
+.stats-fill {
+  height: 100%;
+  width: 0;
+  border-radius: inherit;
+  background: var(--accent);
+  transition: width 600ms ease;
+}
+
+.stats-value {
+  min-width: 10rem;
+  flex-shrink: 0;
+  text-align: right;
+  font-size: 1.35rem;
+  font-weight: 300;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- text (static label) ---------- */
+
+.text-widget {
+  font-weight: 300;
+  overflow-wrap: anywhere;
+  padding: 0 0.5rem;
+}
+
+.text-small {
+  font-size: 1.5rem;
+  font-weight: 400;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  opacity: 0.72;
+}
+
+.text-medium {
+  font-size: 2.4rem;
+}
+
+.text-large {
+  font-size: 4.8rem;
+  font-weight: 200;
+}
+
+.align-center {
+  text-align: center;
+}
+
 /* ---------- settings (minimal customization panel) ---------- */
 
 #settings {
