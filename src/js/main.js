@@ -281,7 +281,7 @@ function buildStats(widget, index) {
   const rows = [
     ["cpu", "CPU", widget.show_cpu],
     ["ram", "RAM", widget.show_ram],
-    ["disk", widget.disk || "Disk", widget.show_disk],
+    ["disk", widget.disk_label || "storage", widget.show_disk],
   ];
   for (const [key, name, enabled] of rows) {
     if (!enabled) continue;

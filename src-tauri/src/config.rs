@@ -66,6 +66,7 @@ icon = "discord"               # built-in icon name, or path to an svg
 # show_ram  = true
 # show_disk = true
 # disk = "C:"                    # which drive the disk meter watches
+# disk_label = "storage"         # name shown on the disk row
 
 # A static label — title a section of the column, or just say something:
 #
@@ -183,6 +184,8 @@ pub enum Widget {
         show_disk: bool,
         #[serde(default = "default_disk")]
         disk: String,
+        #[serde(default = "default_disk_label")]
+        disk_label: String,
     },
     Text {
         text: String,
@@ -199,6 +202,10 @@ fn default_true() -> bool {
 
 fn default_disk() -> String {
     "C:".into()
+}
+
+fn default_disk_label() -> String {
+    "storage".into()
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize)]
@@ -441,15 +448,16 @@ mod tests {
                 show_cpu: true,
                 show_ram: true,
                 show_disk: false,
-                disk
-            } if disk == "C:"
+                disk,
+                disk_label
+            } if disk == "C:" && disk_label == "storage"
         ));
     }
 
     #[test]
     fn stats_widget_accepts_params() {
         let config = parse(
-            "[[widget]]\nkind = \"stats\"\nshow_cpu = false\nshow_disk = true\ndisk = \"D:\"\n",
+            "[[widget]]\nkind = \"stats\"\nshow_cpu = false\nshow_disk = true\ndisk = \"D:\"\ndisk_label = \"games\"\n",
         )
         .unwrap();
         assert!(matches!(
@@ -458,8 +466,9 @@ mod tests {
                 show_cpu: false,
                 show_ram: true,
                 show_disk: true,
-                disk
-            } if disk == "D:"
+                disk,
+                disk_label
+            } if disk == "D:" && disk_label == "games"
         ));
     }
 
