@@ -14,12 +14,22 @@
         <button id="open-config" type="button">Open config folder</button>
       </header>
       <section>
-        <h2>Background</h2>
-        <div id="background-grid"></div>
-      </section>
-      <section>
         <h2>Theme</h2>
         <div id="theme-controls"></div>
+      </section>
+      <section>
+        <h2>Widgets</h2>
+        <div id="widget-list"></div>
+        <div id="widget-add"></div>
+        <p class="widget-hint dim">
+          Order here is order on the screen. Params (coordinates, labels,
+          URIs…) live in config.toml — Open config folder, edit, save, and the
+          dashboard updates live.
+        </p>
+      </section>
+      <section>
+        <h2>Background</h2>
+        <div id="background-grid"></div>
       </section>
     </main>
     <script type="module" src="js/settings.js"></script>

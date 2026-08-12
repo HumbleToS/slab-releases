@@ -193,6 +193,9 @@ pub fn run() {
             commands::media_prev,
             commands::open_shortcut,
             commands::set_theme,
+            commands::widget_add,
+            commands::widget_remove,
+            commands::widget_move,
         ])
         .setup(|app| {
             install_panic_logger();
