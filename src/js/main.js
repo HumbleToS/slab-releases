@@ -63,6 +63,7 @@ const clocks = []; // {timeEl, meridiemEl, dateEl, format, showDate}
 const weatherWidgets = new Map(); // widget_index -> element refs
 const suns = new Map(); // widget_index -> {track, dot, sunrise, sunset, isDay}
 const mediaWidgets = []; // element refs, one per media widget
+const statsWidgets = new Map(); // widget_index -> {cpu?, ram?, disk?} row refs
 
 /* ---------- rendering ---------- */
 
@@ -79,6 +80,7 @@ function render(state) {
   mediaWidgets.length = 0;
   weatherWidgets.clear();
   suns.clear();
+  statsWidgets.clear();
   const container = document.getElementById("widgets");
   container.replaceChildren();
 
@@ -94,6 +96,12 @@ function render(state) {
         break;
       case "weather":
         container.append(buildWeather(widget, index));
+        break;
+      case "stats":
+        container.append(buildStats(widget, index));
+        break;
+      case "text":
+        container.append(buildText(widget));
         break;
       case "shortcut":
         // Consecutive shortcuts share one grid.
@@ -267,6 +275,55 @@ function positionSun(sun) {
   sun.dot.style.left = `${Math.min(100, Math.max(0, progress * 100))}%`;
 }
 
+function buildStats(widget, index) {
+  const card = el("section", "card stats");
+  const refs = {};
+  const rows = [
+    ["cpu", "CPU", widget.show_cpu],
+    ["ram", "RAM", widget.show_ram],
+    ["disk", widget.disk || "Disk", widget.show_disk],
+  ];
+  for (const [key, name, enabled] of rows) {
+    if (!enabled) continue;
+    const row = el("div", "stats-row");
+    const meter = el("div", "stats-meter");
+    const fill = el("div", "stats-fill");
+    meter.append(fill);
+    const value = el("span", "stats-value dim", "—");
+    row.append(el("span", "stats-name dim", name), meter, value);
+    card.append(row);
+    refs[key] = { fill, value };
+  }
+  statsWidgets.set(index, refs);
+  return card;
+}
+
+function applyStats(update) {
+  const refs = statsWidgets.get(update.widget_index);
+  if (!refs) return;
+  const width = (percent) => `${Math.min(100, Math.max(0, percent))}%`;
+  if (refs.cpu) {
+    refs.cpu.fill.style.width = width(update.cpu_percent);
+    refs.cpu.value.textContent = `${Math.round(update.cpu_percent)}%`;
+  }
+  if (refs.ram) {
+    refs.ram.fill.style.width = width(update.ram_percent);
+    refs.ram.value.textContent = update.ram_text;
+  }
+  if (refs.disk && update.disk_percent !== null) {
+    refs.disk.fill.style.width = width(update.disk_percent);
+    refs.disk.value.textContent = update.disk_text;
+  }
+}
+
+function buildText(widget) {
+  return el(
+    "section",
+    `text-widget text-${widget.size} align-${widget.align}`,
+    widget.text
+  );
+}
+
 function buildShortcut(widget) {
   const tile = el("button", "tile");
   tile.type = "button";
@@ -353,5 +410,6 @@ if (tauri) {
   tauri.event.listen("config-update", (event) => render(event.payload));
   tauri.event.listen("weather-update", (event) => applyWeather(event.payload));
   tauri.event.listen("media-update", (event) => applyMedia(event.payload));
+  tauri.event.listen("stats-update", (event) => applyStats(event.payload));
   invoke("frontend_ready");
 }

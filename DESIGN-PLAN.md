@@ -86,6 +86,19 @@ kind = "shortcut"
 label = "Discord"
 uri = "discord://-/"
 icon = "discord"               # built-in icon set, or path to an svg
+
+[[widget]]
+kind = "stats"
+show_cpu = true                # live meters, sampled every 2s
+show_ram = true
+show_disk = true
+disk = "C:"                    # which drive the disk meter watches
+
+[[widget]]
+kind = "text"
+text = "arcade"                # static label
+size = "medium"                # small / medium / large
+align = "left"                 # or "center"
 ```
 
 Rules: unknown keys are ignored, unknown widget kinds are skipped with a log line, a missing/corrupt config regenerates defaults (the broken file is preserved as `config.toml.invalid`). Config changes hot-reload via the file watcher — edit, save, watch the screen update. A future in-app settings panel (M3) writes to this same file; the file is always the truth.
@@ -119,7 +132,9 @@ Derived tokens (computed by theme.rs so the frontend never invents a color): `--
 
 Second amendment (2026-08-10) — the Wallpaper Engine model: Slab lives in the system tray (Open Slab / Quit); launching it by hand opens a customization window on the primary monitor with a background selector (browses the configured folder + the WE workshop directory, WE titles from project.json, first-frame previews) and the shared theme controls; autostart goes straight to tray. The dashboard window itself is not part of the desktop flow — no taskbar entry, always-on-bottom on the panel. Backgrounds are never auto-picked: a folder in `background` only tells the selector where to browse; gradient until the user chooses. The dashboard keeps its own touch quick-panel (gear). Exit test: fresh Windows 11 machine with Smart App Control on, installer to working dashboard with zero script warnings and zero manual configuration — then change the accent color in config.toml, save, and watch it update live without restart.
 
-**M2 — beyond parity.** Album art, shuffle/repeat, seek bar, display picker UI, tray icon with quit/restart/open-config, additional widget kinds (system stats via sysinfo, static text/label).
+Third amendment (2026-08-11) — more widget kinds: the M2 "additional widget kinds" land in M1 at the maintainer's request. `stats` shows CPU / RAM / drive meters via sysinfo, sampled every two seconds on a dedicated thread that idles when no stats widget is configured; the meter bars draw the accent on the hairline track (v2 defaults — both already theme tokens, nothing new to configure). `text` is a static label rendered bare like the clock, with `size` (small/medium/large) and `align` (left/center) params. Both ship as commented-out examples in the default config rather than changing the shipped dashboard. Temps remain out (the LibreHardwareMonitor open question stands).
+
+**M2 — beyond parity.** Album art, shuffle/repeat, seek bar, display picker UI, tray icon with quit/restart/open-config, further widget kinds beyond stats/text as demand appears.
 
 **M3 — shareable.** MSI/NSIS installer via Tauri bundler, code signing decision ({{CONFIRM}} — cert costs money), in-app touch settings panel that writes config.toml, scene.pkg auto-extract so users skip RePKG, README for non-dev HYTE owners.
 
