@@ -139,7 +139,19 @@ body.settings-page {
   align-items: center;
   gap: 1rem;
   padding: 0.65rem 0.65rem 0.65rem 1rem;
-  cursor: pointer;
+  cursor: grab;
+}
+
+.widget-item.dragging {
+  opacity: 0.35;
+}
+
+.widget-item.drop-above {
+  box-shadow: 0 -3px 0 0 var(--accent);
+}
+
+.widget-item.drop-below {
+  box-shadow: 0 3px 0 0 var(--accent);
 }
 
 .widget-caret {

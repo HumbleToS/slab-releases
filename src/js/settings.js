@@ -143,6 +143,13 @@ const WIDGET_FIELDS = {
 
 let expandedWidget = null; // index of the row whose editor is open
 let lastWidgets = []; // latest widget state pushed by the backend
+let dragFrom = null; // index being dragged, null when no drag is live
+
+function clearDropMarkers() {
+  for (const node of document.querySelectorAll(".widget-item")) {
+    node.classList.remove("drop-above", "drop-below", "dragging");
+  }
+}
 
 const pendingWidgetWrites = new Map();
 function writeWidget(index, key, value) {
@@ -252,6 +259,43 @@ function renderWidgets(widgets) {
       // Always re-render from the freshest backend state — this closure's
       // `widgets` may predate edits made since it was rendered.
       renderWidgets(lastWidgets);
+    });
+
+    /* Drag a row anywhere in the list; a drop indicator marks where it
+       lands. The ↑↓ buttons stay as the touch/keyboard path. */
+    row.draggable = true;
+    row.addEventListener("dragstart", (event) => {
+      dragFrom = index;
+      expandedWidget = null;
+      event.dataTransfer.effectAllowed = "move";
+      item.classList.add("dragging");
+    });
+    row.addEventListener("dragend", () => {
+      dragFrom = null;
+      clearDropMarkers();
+    });
+    item.addEventListener("dragover", (event) => {
+      if (dragFrom === null) return;
+      event.preventDefault();
+      event.dataTransfer.dropEffect = "move";
+      const rect = item.getBoundingClientRect();
+      const above = event.clientY < rect.top + rect.height / 2;
+      item.classList.toggle("drop-above", above);
+      item.classList.toggle("drop-below", !above);
+    });
+    item.addEventListener("dragleave", () => {
+      item.classList.remove("drop-above", "drop-below");
+    });
+    item.addEventListener("drop", (event) => {
+      if (dragFrom === null) return;
+      event.preventDefault();
+      const rect = item.getBoundingClientRect();
+      const above = event.clientY < rect.top + rect.height / 2;
+      let to = index + (above ? 0 : 1);
+      if (to > dragFrom) to -= 1; // removing the dragged row shifts targets
+      if (to !== dragFrom) invoke("widget_reorder", { from: dragFrom, to });
+      dragFrom = null;
+      clearDropMarkers();
     });
     const actions = el("div", "widget-actions");
     const button = (label, title, disabled, onClick) => {

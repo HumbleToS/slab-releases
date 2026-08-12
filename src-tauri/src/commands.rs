@@ -42,6 +42,11 @@ pub async fn widget_move(app: AppHandle, index: usize, up: bool) -> Result<(), S
 }
 
 #[tauri::command]
+pub async fn widget_reorder(app: AppHandle, from: usize, to: usize) -> Result<(), String> {
+    widget_op(app, move |dir| crate::config::reorder_widget(dir, from, to)).await
+}
+
+#[tauri::command]
 pub async fn widget_set(
     app: AppHandle,
     index: usize,
