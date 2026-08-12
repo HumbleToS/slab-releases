@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Slab preview harness</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="../src/css/main.css" />
+    <script>
+      // Mock the Tauri API so the REAL main.js renders with fake state.
+      // Tokens mirror theme.rs resolve_tokens(Theme::default()).
+      const listeners = {};
+      window.__TAURI__ = {
+        core: {
+          invoke: (cmd) => {
+            if (cmd === "frontend_ready") setTimeout(fireMockState, 0);
+            return Promise.resolve();
+          },
+          convertFileSrc: (p) => p,
+        },
+        event: {
+          listen: (name, cb) => {
+            listeners[name] = cb;
+            return Promise.resolve(() => {});
+          },
+        },
+      };
+
+      const params = new URLSearchParams(location.search);
+      const scenario = params.get("scenario") || "default";
+
+      function fire(name, payload) {
+        if (listeners[name]) listeners[name]({ payload });
+      }
+
+      function fireMockState() {
+        const tokens = [
+          ["--accent", "#e4553b"],
+          ["--panel-rgb", "10 10 12"],
+          ["--panel-opacity", "0.42"],
+          ["--blur", "22px"],
+          ["--radius", "26px"],
+          ["--font", '"Inter"'],
+          ["--text-scale", "1"],
+          ["--shade", "0.45"],
+          ["--fg-rgb", "255 255 255"],
+          ["--hairline", "rgb(255 255 255 / 0.08)"],
+          ["--shade-overlay", "rgb(0 0 0 / 0.45)"],
+        ];
+        const widgets = [
+          { kind: "clock", format: "12h", show_date: true },
+          { kind: "media" },
+          {
+            kind: "weather",
+            lat: 0,
+            lon: 0,
+            label: "Hobbs, NM",
+            unit: "fahrenheit",
+          },
+          { kind: "text", text: "apps", size: "small", align: "left" },
+          { kind: "shortcut", label: "Discord", uri: "x", icon: "discord" },
+          { kind: "shortcut", label: "Steam", uri: "x", icon: "steam" },
+          { kind: "shortcut", label: "Spotify", uri: "x", icon: "spotify" },
+          { kind: "shortcut", label: "Terminal", uri: "x", icon: "terminal" },
+          { kind: "text", text: "system", size: "small", align: "left" },
+          {
+            kind: "stats",
+            show_cpu: true,
+            show_ram: true,
+            show_disk: true,
+            disk: "C:",
+            disk_label: "storage",
+          },
+        ];
+        fire("config-update", {
+          tokens,
+          background: { kind: "gradient", path: null },
+          widgets,
+          config_dir: "",
+        });
+        if (scenario !== "empty-media") {
+          fire("media-update", {
+            empty: false,
+            title: "Midnight City",
+            artist: "M83",
+            app_id: "Spotify.exe",
+            playing: true,
+          });
+        } else {
+          fire("media-update", { empty: true });
+        }
+        fire("weather-update", {
+          widget_index: 2,
+          label: "Hobbs, NM",
+          unit: "fahrenheit",
+          temperature: 82.4,
+          high: 95.7,
+          low: 70.2,
+          code: 1,
+          condition: "Mostly Clear",
+          is_day: true,
+          sunrise: new Date(Date.now() - 6 * 3600e3).toISOString(),
+          sunset: new Date(Date.now() + 4 * 3600e3).toISOString(),
+        });
+        fire("stats-update", {
+          widget_index: 9,
+          cpu_percent: 37.2,
+          ram_percent: 54.8,
+          ram_text: "17.5 / 31.9 GB",
+          disk_percent: 71.3,
+          disk_text: "665 / 931 GB",
+        });
+      }
+    </script>
+  </head>
+  <body>
+    <div id="background" aria-hidden="true">
+      <div id="bg-gradient"></div>
+      <video id="bg-video" autoplay loop muted playsinline hidden></video>
+      <img id="bg-image" alt="" hidden />
+      <div id="bg-shade"></div>
+    </div>
+    <main id="widgets"></main>
+    <div id="settings">
+      <section id="settings-card" class="card" hidden></section>
+      <button id="settings-toggle" type="button" aria-label="Customize"></button>
+    </div>
+    <script type="module" src="../src/js/main.js"></script>
+  </body>
+</html>
