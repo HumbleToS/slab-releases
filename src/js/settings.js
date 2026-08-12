@@ -313,6 +313,10 @@ document.getElementById("open-config").addEventListener("click", () => {
   if (configDir) invoke("open_shortcut", { uri: configDir });
 });
 
+document.getElementById("check-updates").addEventListener("click", () => {
+  invoke("update_check");
+});
+
 /* ---------- update status ---------- */
 
 const UPDATE_LABELS = {

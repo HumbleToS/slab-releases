@@ -41,10 +41,12 @@ body.settings-page {
   font-weight: 300;
 }
 
-#open-config {
+#open-config,
+#check-updates {
   padding: 0.65rem 1.2rem;
   border-radius: calc(var(--radius) * 0.5);
   font-size: 0.95rem;
+  white-space: nowrap;
 }
 
 #app-version {
