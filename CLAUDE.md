@@ -29,7 +29,7 @@ Product pillars, in priority order: touch-first, fully customizable, zero-fricti
 
 ## Conventions
 
-- VCS (maintainer decision 2026-08-11, superseding the 2026-08-10 local-only rule): the source lives at github.com/HumbleToS/slab-releases — the same repo that hosts the installers and `latest.json` update feed, so release-download URLs stay unchanged. Past the initial import, work is branch-only: no direct commits to `main`, every merge via PR, conventional commit messages (`feat:`, `fix:`, `chore:`, `docs:`), gated by `pnpm check`.
+- VCS (maintainer decision 2026-08-11, superseding the 2026-08-10 local-only rule): the source lives at github.com/HumbleToS/slab-releases — the same repo that hosts the installers and `latest.json` update feed, so release-download URLs stay unchanged. Solo-maintainer workflow (2026-08-11): committing and pushing straight to `main` is fine — no PRs or branches required. Conventional commit messages (`feat:`, `fix:`, `chore:`, `docs:`), gated by `pnpm check` before every push.
 - Backend modules: `media.rs` (GSMTC), `weather.rs`, `display.rs` (monitor detection), `config.rs` (load/watch/defaults), `theme.rs` (token resolution), `commands.rs` (Tauri IPC surface). Keep IPC thin — logic lives in the modules, not in command handlers.
 - State flows backend → frontend via Tauri events; intents flow frontend → backend via commands. The webview makes no network calls — weather goes through the backend too.
 
