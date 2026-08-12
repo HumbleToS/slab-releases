@@ -1,0 +1,106 @@
+/* Customization window (PC monitor, mouse-first). Token-driven throughout —
+   the 96px touch sizing is a dashboard-surface rule, relaxed here. */
+
+html {
+  /* Fixed type scale here — vw sizing is for the dashboard surface. */
+  font-size: calc(16px * var(--text-scale, 1));
+}
+
+body.settings-page {
+  overflow-y: auto;
+  min-height: 100vh;
+  background: linear-gradient(
+    170deg,
+    color-mix(in oklab, var(--accent) 16%, rgb(var(--panel-rgb))),
+    rgb(var(--panel-rgb)) 62%
+  );
+}
+
+.settings-page button {
+  min-width: 0;
+  min-height: 0;
+}
+
+#settings-main {
+  max-width: 72rem;
+  margin: 0 auto;
+  padding: 2.25rem 2rem 4rem;
+}
+
+#settings-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+#settings-header h1 {
+  margin: 0;
+  font-size: 2.1rem;
+  font-weight: 300;
+}
+
+#open-config {
+  padding: 0.65rem 1.2rem;
+  border-radius: calc(var(--radius) * 0.5);
+  font-size: 0.95rem;
+}
+
+#settings-main h2 {
+  margin: 2.5rem 0 1rem;
+  font-size: 1.05rem;
+  font-weight: 400;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  opacity: 0.7;
+}
+
+#background-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(13rem, 1fr));
+  gap: 1rem;
+}
+
+.bg-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding: 0.6rem;
+  border-radius: var(--radius);
+}
+
+.bg-tile.active {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent);
+}
+
+.bg-preview {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  border-radius: calc(var(--radius) * 0.6);
+  pointer-events: none;
+  background: rgb(var(--fg-rgb) / 0.04);
+}
+
+.gradient-preview {
+  background: linear-gradient(
+    170deg,
+    color-mix(in oklab, var(--accent) 25%, rgb(var(--panel-rgb))),
+    rgb(var(--panel-rgb))
+  );
+}
+
+.bg-name {
+  font-size: 0.95rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#theme-controls {
+  max-width: 30rem;
+}
+
+.settings-page input[type="range"] {
+  height: 48px;
+}

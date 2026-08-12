@@ -1,0 +1,353 @@
+/* Slab dashboard styles. Every themable value routes through the CSS custom
+   properties pushed by the backend (theme.rs) — no color/size literals for
+   anything the theme owns. Layout targets the 1100x3840 portrait panel. */
+
+:root {
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+html {
+  /* Width-proportional type scale: 16px at the 1100px design width, adapting
+     to whatever resolution the panel actually reports (e.g. 682x2560).
+     The settings page overrides this with a fixed scale. */
+  font-size: calc(1.4545vw * var(--text-scale, 1));
+  touch-action: manipulation;
+}
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+}
+
+body {
+  font-family: var(--font, sans-serif), "Segoe UI Variable", "Segoe UI",
+    system-ui, sans-serif;
+  color: rgb(var(--fg-rgb));
+  cursor: default;
+}
+
+/* ---------- background layers ---------- */
+
+#background {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+}
+
+#bg-gradient {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    170deg,
+    color-mix(in oklab, var(--accent) 22%, rgb(var(--panel-rgb))),
+    rgb(var(--panel-rgb)) 62%,
+    color-mix(in oklab, var(--accent) 8%, rgb(var(--panel-rgb)))
+  );
+}
+
+#bg-video,
+#bg-image {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  pointer-events: none;
+}
+
+#bg-shade {
+  position: absolute;
+  inset: 0;
+  background: var(--shade-overlay);
+}
+
+/* ---------- widget column ---------- */
+
+#widgets {
+  position: relative;
+  z-index: 1;
+  height: 100%;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  display: flex;
+  flex-direction: column;
+  gap: 3rem;
+  padding: 4.5rem 4rem;
+}
+
+#widgets::-webkit-scrollbar {
+  display: none;
+}
+
+.card {
+  background: rgb(var(--panel-rgb) / var(--panel-opacity));
+  backdrop-filter: blur(var(--blur));
+  -webkit-backdrop-filter: blur(var(--blur));
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius);
+  padding: 2.5rem 2.75rem;
+}
+
+.dim {
+  opacity: 0.72;
+}
+
+.faint {
+  opacity: 0.45;
+}
+
+/* ---------- clock ---------- */
+
+.clock {
+  padding: 1rem 0.5rem 0;
+}
+
+.clock-time {
+  font-size: 12.5rem;
+  font-weight: 200;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  display: flex;
+  align-items: baseline;
+  gap: 1.25rem;
+}
+
+.clock-meridiem {
+  font-size: 3rem;
+  font-weight: 300;
+}
+
+.clock-date {
+  margin-top: 1.5rem;
+  font-size: 2.1rem;
+  font-weight: 300;
+}
+
+/* ---------- media ---------- */
+
+.media-title {
+  font-size: 2.4rem;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.media-artist {
+  margin-top: 0.5rem;
+  font-size: 1.9rem;
+  font-weight: 300;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.media-app {
+  margin-top: 0.75rem;
+  font-size: 1.15rem;
+  font-weight: 400;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.media-empty {
+  font-size: 1.9rem;
+  font-weight: 300;
+}
+
+.media-controls {
+  display: flex;
+  gap: 1.75rem;
+  margin-top: 2.25rem;
+}
+
+/* ---------- touch controls (≥90px targets, pressed states) ---------- */
+
+button {
+  appearance: none;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius);
+  background: rgb(var(--fg-rgb) / 0.06);
+  color: inherit;
+  font: inherit;
+  min-width: 96px;
+  min-height: 96px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 80ms ease, background-color 80ms ease;
+}
+
+button:active,
+.tile:active {
+  background: rgb(var(--fg-rgb) / 0.16);
+  transform: scale(0.95);
+}
+
+button svg {
+  width: 2.5rem;
+  height: 2.5rem;
+  fill: currentcolor;
+}
+
+/* ---------- weather ---------- */
+
+.weather-top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1.5rem;
+}
+
+.weather-temp {
+  font-size: 4.8rem;
+  font-weight: 200;
+  line-height: 1;
+}
+
+.weather-condition {
+  font-size: 1.7rem;
+  font-weight: 300;
+  text-align: right;
+}
+
+.weather-meta {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 1.25rem;
+  font-size: 1.35rem;
+  font-weight: 300;
+}
+
+.sun-track {
+  position: relative;
+  height: 3px;
+  margin-top: 2rem;
+  border-radius: 2px;
+  background: var(--hairline);
+}
+
+.sun-dot {
+  position: absolute;
+  top: 50%;
+  width: 1rem;
+  height: 1rem;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  background: var(--accent);
+}
+
+/* ---------- settings (minimal customization panel) ---------- */
+
+#settings {
+  position: fixed;
+  right: 2.5rem;
+  bottom: 2.5rem;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 1.5rem;
+}
+
+#settings-toggle {
+  border-radius: 50%;
+  background: rgb(var(--panel-rgb) / var(--panel-opacity));
+  backdrop-filter: blur(var(--blur));
+  -webkit-backdrop-filter: blur(var(--blur));
+}
+
+#settings-card {
+  width: 26.5rem;
+}
+
+.settings-row {
+  margin-bottom: 1.75rem;
+}
+
+.settings-row:last-child {
+  margin-bottom: 0;
+}
+
+.settings-label {
+  font-size: 1.25rem;
+  font-weight: 400;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin-bottom: 0.75rem;
+}
+
+.swatch-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+}
+
+.swatch.active {
+  border: 3px solid rgb(var(--fg-rgb));
+}
+
+input[type="range"] {
+  width: 100%;
+  height: 90px;
+  appearance: none;
+  -webkit-appearance: none;
+  background: transparent;
+}
+
+input[type="range"]::-webkit-slider-runnable-track {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--hairline);
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 3.5rem;
+  height: 3.5rem;
+  border-radius: 50%;
+  background: rgb(var(--fg-rgb));
+  margin-top: calc(3px - 1.75rem);
+}
+
+/* ---------- shortcuts ---------- */
+
+.shortcut-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1.75rem;
+}
+
+.tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1.25rem;
+  min-height: 170px;
+  padding: 2.25rem 1.5rem;
+  transition: transform 80ms ease, background-color 80ms ease;
+}
+
+.tile svg,
+.tile img {
+  width: 3.5rem;
+  height: 3.5rem;
+  fill: currentcolor;
+  pointer-events: none;
+}
+
+.tile-label {
+  font-size: 1.5rem;
+  font-weight: 400;
+}
