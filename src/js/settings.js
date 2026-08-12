@@ -142,6 +142,7 @@ const WIDGET_FIELDS = {
 };
 
 let expandedWidget = null; // index of the row whose editor is open
+let lastWidgets = []; // latest widget state pushed by the backend
 
 const pendingWidgetWrites = new Map();
 function writeWidget(index, key, value) {
@@ -248,7 +249,9 @@ function renderWidgets(widgets) {
     );
     row.addEventListener("click", () => {
       expandedWidget = expandedWidget === index ? null : index;
-      renderWidgets(widgets);
+      // Always re-render from the freshest backend state — this closure's
+      // `widgets` may predate edits made since it was rendered.
+      renderWidgets(lastWidgets);
     });
     const actions = el("div", "widget-actions");
     const button = (label, title, disabled, onClick) => {
@@ -285,6 +288,18 @@ function renderWidgets(widgets) {
     list.append(el("div", "widget-summary dim", "No widgets — add one below."));
   }
 }
+
+// Refreshes are suppressed while a field has focus; when focus leaves the
+// editors, catch up with whatever state arrived in the meantime.
+document.getElementById("widget-list").addEventListener("focusout", () => {
+  setTimeout(() => {
+    const list = document.getElementById("widget-list");
+    const active = document.activeElement;
+    if (!(list.contains(active) && active.matches("input, select"))) {
+      renderWidgets(lastWidgets);
+    }
+  }, 0);
+});
 
 const addRow = document.getElementById("widget-add");
 for (const kind of WIDGET_KINDS) {
@@ -324,7 +339,8 @@ if (tauri) {
     configDir = state.config_dir;
     currentBackground = state.background.path || "";
     highlight();
-    renderWidgets(state.widgets);
+    lastWidgets = state.widgets;
+    renderWidgets(lastWidgets);
     if (state.version) {
       document.getElementById("app-version").textContent = `v${state.version}`;
     }
