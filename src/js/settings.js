@@ -151,6 +151,22 @@ document.getElementById("open-config").addEventListener("click", () => {
   if (configDir) invoke("open_shortcut", { uri: configDir });
 });
 
+/* ---------- update status ---------- */
+
+const UPDATE_LABELS = {
+  checking: "checking for updates…",
+  current: "up to date",
+  error: "update check failed — will retry",
+};
+
+function showUpdateStatus(status) {
+  const node = document.getElementById("update-status");
+  node.textContent =
+    status.state === "installing"
+      ? `updating to v${status.version}…`
+      : UPDATE_LABELS[status.state] || "";
+}
+
 if (tauri) {
   tauri.event.listen("config-update", (event) => {
     const state = event.payload;
@@ -162,7 +178,11 @@ if (tauri) {
     currentBackground = state.background.path || "";
     highlight();
     renderWidgets(state.widgets);
+    if (state.version) {
+      document.getElementById("app-version").textContent = `v${state.version}`;
+    }
   });
+  tauri.event.listen("update-status", (event) => showUpdateStatus(event.payload));
   invoke("frontend_ready");
   invoke("list_backgrounds").then((list) => {
     options = list || [];
