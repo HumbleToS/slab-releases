@@ -1,0 +1,6 @@
+node_modules/
+target/
+src-tauri/gen/schemas/
+dist/
+latest.json
+HUMAN-TODO.md
