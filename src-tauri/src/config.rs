@@ -471,16 +471,36 @@ pub fn move_widget(dir: &Path, ui_index: usize, up: bool) -> Result<(), String> 
     } else {
         ui_index + 1
     };
+    reorder_widget(dir, ui_index, neighbor_ui)
+}
+
+/// Move the widget at `from` to sit at `to` (both positions among the valid
+/// widgets, as displayed). Implemented as a chain of neighbor swaps so
+/// comments and invalid entries keep their places.
+pub fn reorder_widget(dir: &Path, from: usize, to: usize) -> Result<(), String> {
+    if from == to {
+        return Ok(());
+    }
     let path = dir.join(CONFIG_FILE);
     let mut doc = load_doc(&path)?;
     let tables = widget_tables(&mut doc);
-    let a = file_index(tables, ui_index)?;
-    let b = file_index(tables, neighbor_ui)?;
+    let mut current = from;
+    while current != to {
+        let next = if to > from { current + 1 } else { current - 1 };
+        let a = file_index(tables, current)?;
+        let b = file_index(tables, next)?;
+        swap_tables(tables, a, b)?;
+        current = next;
+    }
+    save_doc(&path, &doc)
+}
+
+/// Swap two entries of the raw [[widget]] array. toml_edit tables remember
+/// their place in the document; swapping the values alone renders in the
+/// original order, so each slot's document position is pinned back after.
+fn swap_tables(tables: &mut toml_edit::ArrayOfTables, a: usize, b: usize) -> Result<(), String> {
     let table_a = tables.get(a).cloned().ok_or("widget vanished")?;
     let table_b = tables.get(b).cloned().ok_or("widget vanished")?;
-    // toml_edit tables remember their place in the document; swapping the
-    // values alone renders in the original order. Swap, then pin each slot's
-    // document position back so the rendered order actually flips.
     let position_a = table_a.position();
     let position_b = table_b.position();
     *tables.get_mut(a).expect("checked") = table_b;
@@ -489,7 +509,7 @@ pub fn move_widget(dir: &Path, ui_index: usize, up: bool) -> Result<(), String> 
         tables.get_mut(a).expect("checked").set_position(position_a);
         tables.get_mut(b).expect("checked").set_position(position_b);
     }
-    save_doc(&path, &doc)
+    Ok(())
 }
 
 /// Watch `dir` for saves of config.toml and re-apply the config on change.
@@ -833,6 +853,25 @@ mod tests {
         assert!(matches!(config.widgets[0], Widget::Clock { .. }));
         assert!(move_widget(&dir, 0, true).is_err(), "first can't move up");
         assert!(move_widget(&dir, 3, false).is_err(), "last can't move down");
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn reorder_widget_moves_across_the_list() {
+        let dir = scratch_dir("reorder-widget");
+        fs::write(dir.join(CONFIG_FILE), DEFAULT_CONFIG).unwrap();
+        // default order: clock, media, weather, shortcut — drag clock to last
+        reorder_widget(&dir, 0, 3).unwrap();
+        let config = parse(&fs::read_to_string(dir.join(CONFIG_FILE)).unwrap()).unwrap();
+        assert!(matches!(config.widgets[0], Widget::Media {}));
+        assert!(matches!(config.widgets[3], Widget::Clock { .. }));
+        // and drag it back to the front
+        reorder_widget(&dir, 3, 0).unwrap();
+        let config = parse(&fs::read_to_string(dir.join(CONFIG_FILE)).unwrap()).unwrap();
+        assert!(matches!(config.widgets[0], Widget::Clock { .. }));
+        assert!(matches!(config.widgets[1], Widget::Media {}));
+        assert!(reorder_widget(&dir, 0, 0).is_ok(), "no-op drop is fine");
+        assert!(reorder_widget(&dir, 0, 9).is_err(), "target out of range");
         let _ = fs::remove_dir_all(&dir);
     }
 
