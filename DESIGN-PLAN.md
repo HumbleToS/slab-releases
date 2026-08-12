@@ -93,6 +93,7 @@ show_cpu = true                # live meters, sampled every 2s
 show_ram = true
 show_disk = true
 disk = "C:"                    # which drive the disk meter watches
+disk_label = "storage"         # name shown on the disk row
 
 [[widget]]
 kind = "text"
