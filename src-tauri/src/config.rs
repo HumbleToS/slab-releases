@@ -328,6 +328,132 @@ pub fn set_theme_value(dir: &Path, key: &str, value: &serde_json::Value) -> Resu
     fs::write(&path, doc.to_string()).map_err(|e| e.to_string())
 }
 
+/// Starter [[widget]] entries for the customization window's "add widget"
+/// buttons. Every template must parse into a valid Widget (unit-tested);
+/// required params get editable placeholder values.
+const WIDGET_TEMPLATES: [(&str, &str); 6] = [
+    ("clock", "kind = \"clock\"\nformat = \"12h\"\nshow_date = true\n"),
+    ("media", "kind = \"media\"\n"),
+    (
+        "weather",
+        "kind = \"weather\"\nlat = 32.7026\nlon = -103.136\nlabel = \"Hobbs, NM\"\nunit = \"fahrenheit\"\n",
+    ),
+    (
+        "shortcut",
+        "kind = \"shortcut\"\nlabel = \"New shortcut\"\nuri = \"https://github.com\"\nicon = \"globe\"\n",
+    ),
+    (
+        "stats",
+        "kind = \"stats\"\nshow_cpu = true\nshow_ram = true\nshow_disk = true\ndisk = \"C:\"\n",
+    ),
+    ("text", "kind = \"text\"\ntext = \"label\"\nsize = \"small\"\nalign = \"left\"\n"),
+];
+
+/// Load config.toml for in-place editing with the same fallback rules as
+/// `set_theme_value`: missing file starts from the default template.
+fn load_doc(path: &Path) -> Result<toml_edit::DocumentMut, String> {
+    let text = fs::read_to_string(path).unwrap_or_else(|_| DEFAULT_CONFIG.to_string());
+    text.parse()
+        .or_else(|_| DEFAULT_CONFIG.parse())
+        .map_err(|e| format!("config unparseable: {e}"))
+}
+
+fn save_doc(path: &Path, doc: &toml_edit::DocumentMut) -> Result<(), String> {
+    if let Some(parent) = path.parent() {
+        let _ = fs::create_dir_all(parent);
+    }
+    fs::write(path, doc.to_string()).map_err(|e| e.to_string())
+}
+
+fn widget_tables(doc: &mut toml_edit::DocumentMut) -> &mut toml_edit::ArrayOfTables {
+    // Ensure the array exists so ops on an empty config still work.
+    if doc
+        .get("widget")
+        .and_then(|w| w.as_array_of_tables())
+        .is_none()
+    {
+        doc.insert(
+            "widget",
+            toml_edit::Item::ArrayOfTables(toml_edit::ArrayOfTables::new()),
+        );
+    }
+    doc["widget"]
+        .as_array_of_tables_mut()
+        .expect("just ensured")
+}
+
+/// The UI lists only the widgets `parse` accepted; the file may hold invalid
+/// entries too (kept, per the config contract). Map a UI index onto the raw
+/// [[widget]] array by counting entries the same way `parse` does.
+fn file_index(tables: &toml_edit::ArrayOfTables, ui_index: usize) -> Result<usize, String> {
+    let mut seen_valid = 0;
+    for (raw_index, table) in tables.iter().enumerate() {
+        let value: Option<toml::Value> = toml::from_str(&table.to_string()).ok();
+        if value.as_ref().and_then(parse_widget).is_some() {
+            if seen_valid == ui_index {
+                return Ok(raw_index);
+            }
+            seen_valid += 1;
+        }
+    }
+    Err(format!("widget index {ui_index} out of range"))
+}
+
+/// Append a starter widget of `kind`, writing through config.toml so the
+/// watcher applies it like a hand edit.
+pub fn add_widget(dir: &Path, kind: &str) -> Result<(), String> {
+    let template = WIDGET_TEMPLATES
+        .iter()
+        .find(|(name, _)| *name == kind)
+        .map(|(_, template)| *template)
+        .ok_or_else(|| format!("unknown widget kind {kind:?}"))?;
+    let path = dir.join(CONFIG_FILE);
+    let mut doc = load_doc(&path)?;
+    let entry: toml_edit::DocumentMut = template.parse().expect("templates are valid toml");
+    widget_tables(&mut doc).push(entry.as_table().clone());
+    save_doc(&path, &doc)
+}
+
+/// Remove the widget at `ui_index` (position among the *valid* widgets, as
+/// shown in the customization window).
+pub fn remove_widget(dir: &Path, ui_index: usize) -> Result<(), String> {
+    let path = dir.join(CONFIG_FILE);
+    let mut doc = load_doc(&path)?;
+    let tables = widget_tables(&mut doc);
+    let raw = file_index(tables, ui_index)?;
+    tables.remove(raw);
+    save_doc(&path, &doc)
+}
+
+/// Swap the widget at `ui_index` with its valid neighbor above (`up`) or
+/// below. Order in the file is order on screen.
+pub fn move_widget(dir: &Path, ui_index: usize, up: bool) -> Result<(), String> {
+    let neighbor_ui = if up {
+        ui_index.checked_sub(1).ok_or("already first")?
+    } else {
+        ui_index + 1
+    };
+    let path = dir.join(CONFIG_FILE);
+    let mut doc = load_doc(&path)?;
+    let tables = widget_tables(&mut doc);
+    let a = file_index(tables, ui_index)?;
+    let b = file_index(tables, neighbor_ui)?;
+    let table_a = tables.get(a).cloned().ok_or("widget vanished")?;
+    let table_b = tables.get(b).cloned().ok_or("widget vanished")?;
+    // toml_edit tables remember their place in the document; swapping the
+    // values alone renders in the original order. Swap, then pin each slot's
+    // document position back so the rendered order actually flips.
+    let position_a = table_a.position();
+    let position_b = table_b.position();
+    *tables.get_mut(a).expect("checked") = table_b;
+    *tables.get_mut(b).expect("checked") = table_a;
+    if let (Some(position_a), Some(position_b)) = (position_a, position_b) {
+        tables.get_mut(a).expect("checked").set_position(position_a);
+        tables.get_mut(b).expect("checked").set_position(position_b);
+    }
+    save_doc(&path, &doc)
+}
+
 /// Watch `dir` for saves of config.toml and re-apply the config on change.
 /// Runs for the lifetime of the app; watcher failures are logged, never fatal.
 pub fn watch(app: AppHandle, dir: PathBuf) {
@@ -609,6 +735,75 @@ mod tests {
         set_theme_value(&dir, "accent", &serde_json::json!("#abcdef")).unwrap();
         let config = load_or_create(&dir);
         assert_eq!(config.theme.accent, "#abcdef");
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn widget_templates_all_parse_valid() {
+        for (kind, template) in WIDGET_TEMPLATES {
+            let config = parse(&format!("[[widget]]\n{template}")).unwrap();
+            assert_eq!(config.widgets.len(), 1, "template {kind:?} must be valid");
+        }
+        // and the template list covers every Widget variant
+        assert_eq!(WIDGET_TEMPLATES.len(), 6);
+    }
+
+    #[test]
+    fn add_widget_appends_and_hot_parses() {
+        let dir = scratch_dir("add-widget");
+        fs::write(dir.join(CONFIG_FILE), DEFAULT_CONFIG).unwrap();
+        add_widget(&dir, "stats").unwrap();
+        let text = fs::read_to_string(dir.join(CONFIG_FILE)).unwrap();
+        assert!(text.contains("# Slab configuration"), "comments preserved");
+        let config = parse(&text).unwrap();
+        assert_eq!(config.widgets.len(), 5);
+        assert!(matches!(config.widgets[4], Widget::Stats { .. }));
+        assert!(add_widget(&dir, "hologram").is_err());
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn remove_widget_targets_valid_index_past_invalid_entries() {
+        let dir = scratch_dir("remove-widget");
+        // raw file: clock, INVALID, media — UI sees [clock, media]
+        fs::write(
+            dir.join(CONFIG_FILE),
+            "[[widget]]\nkind = \"clock\"\n\
+             [[widget]]\nkind = \"hologram\"\n\
+             [[widget]]\nkind = \"media\"\n",
+        )
+        .unwrap();
+        remove_widget(&dir, 1).unwrap(); // remove media, not the invalid entry
+        let text = fs::read_to_string(dir.join(CONFIG_FILE)).unwrap();
+        assert!(text.contains("clock"));
+        assert!(text.contains("hologram"), "invalid entry left in place");
+        assert!(!text.contains("media"));
+        assert!(remove_widget(&dir, 5).is_err());
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn move_widget_swaps_neighbors() {
+        let dir = scratch_dir("move-widget");
+        fs::write(dir.join(CONFIG_FILE), DEFAULT_CONFIG).unwrap();
+        move_widget(&dir, 0, false).unwrap(); // clock down past media
+        let config = parse(&fs::read_to_string(dir.join(CONFIG_FILE)).unwrap()).unwrap();
+        assert!(matches!(config.widgets[0], Widget::Media {}));
+        assert!(matches!(config.widgets[1], Widget::Clock { .. }));
+        move_widget(&dir, 1, true).unwrap(); // and back up
+        let config = parse(&fs::read_to_string(dir.join(CONFIG_FILE)).unwrap()).unwrap();
+        assert!(matches!(config.widgets[0], Widget::Clock { .. }));
+        assert!(move_widget(&dir, 0, true).is_err(), "first can't move up");
+        assert!(move_widget(&dir, 3, false).is_err(), "last can't move down");
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn widget_ops_on_missing_config_start_from_defaults() {
+        let dir = scratch_dir("widget-ops-missing");
+        add_widget(&dir, "text").unwrap();
+        let config = load_or_create(&dir);
+        assert_eq!(config.widgets.len(), 5, "defaults plus the added widget");
         let _ = fs::remove_dir_all(&dir);
     }
 

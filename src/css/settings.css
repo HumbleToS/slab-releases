@@ -101,6 +101,84 @@ body.settings-page {
   max-width: 30rem;
 }
 
+/* ---------- widgets ---------- */
+
+#widget-list {
+  max-width: 42rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.widget-row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.65rem 0.65rem 0.65rem 1.2rem;
+  border: 1px solid var(--hairline);
+  border-radius: calc(var(--radius) * 0.5);
+  background: rgb(var(--panel-rgb) / var(--panel-opacity));
+}
+
+.widget-kind {
+  font-size: 1rem;
+  font-weight: 500;
+  text-transform: capitalize;
+  min-width: 6rem;
+}
+
+.widget-summary {
+  flex: 1;
+  font-size: 0.95rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.widget-actions {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.widget-action {
+  width: 2.6rem;
+  height: 2.6rem;
+  padding: 0;
+  border-radius: calc(var(--radius) * 0.4);
+  font-size: 1rem;
+}
+
+.widget-action:disabled {
+  opacity: 0.25;
+}
+
+#widget-add {
+  margin-top: 0.9rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+
+.widget-add-button {
+  padding: 0.6rem 1.1rem;
+  border-radius: calc(var(--radius) * 0.5);
+  font-size: 0.95rem;
+  text-transform: capitalize;
+}
+
+.widget-hint {
+  max-width: 42rem;
+  margin: 1rem 0 0;
+  font-size: 0.9rem;
+}
+
 .settings-page input[type="range"] {
   height: 48px;
+}
+
+/* The dashboard's 96px touch minimum is reset on this page, so give the
+   accent swatches a real shape of their own. */
+.settings-page .swatch {
+  height: 2.75rem;
+  border-radius: calc(var(--radius) * 0.4);
 }

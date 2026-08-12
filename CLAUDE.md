@@ -64,4 +64,4 @@ Product pillars, in priority order: touch-first, fully customizable, zero-fricti
 
 ## Current milestone
 
-M1 — parity, themable. Scope is exactly the M1 list in `DESIGN-PLAN.md` (including the 2026-08-10 amendment — minimal on-dashboard customization panel writing through config.toml — and the 2026-08-11 amendment — `stats` and `text` widget kinds pulled forward from M2). Do not pull other M2/M3 features forward.
+M1 — parity, themable. Scope is exactly the M1 list in `DESIGN-PLAN.md` (including the 2026-08-10 amendment — minimal on-dashboard customization panel writing through config.toml — the 2026-08-11 amendment — `stats` and `text` widget kinds pulled forward from M2 — and the 2026-08-12 amendment — widget add/remove/reorder in the customization window, params still config-only). Do not pull other M2/M3 features forward.

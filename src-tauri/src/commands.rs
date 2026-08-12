@@ -23,6 +23,36 @@ pub async fn set_theme(
     .map_err(|e| e.to_string())?
 }
 
+/// Widget management from the customization window: add/remove/reorder write
+/// [[widget]] tables through config.toml (like set_theme, the watcher then
+/// applies the change). Param editing stays a config-file affair until M3.
+#[tauri::command]
+pub async fn widget_add(app: AppHandle, kind: String) -> Result<(), String> {
+    widget_op(app, move |dir| crate::config::add_widget(dir, &kind)).await
+}
+
+#[tauri::command]
+pub async fn widget_remove(app: AppHandle, index: usize) -> Result<(), String> {
+    widget_op(app, move |dir| crate::config::remove_widget(dir, index)).await
+}
+
+#[tauri::command]
+pub async fn widget_move(app: AppHandle, index: usize, up: bool) -> Result<(), String> {
+    widget_op(app, move |dir| crate::config::move_widget(dir, index, up)).await
+}
+
+async fn widget_op<F>(app: AppHandle, op: F) -> Result<(), String>
+where
+    F: FnOnce(&std::path::Path) -> Result<(), String> + Send + 'static,
+{
+    tauri::async_runtime::spawn_blocking(move || {
+        let dir = app.path().app_config_dir().map_err(|e| e.to_string())?;
+        op(&dir).inspect_err(|e| log::warn!("widget op: {e}"))
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
 /// The webview announces it has loaded and wants the full current state.
 #[tauri::command]
 pub fn frontend_ready(app: AppHandle) {

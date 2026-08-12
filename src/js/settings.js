@@ -81,6 +81,72 @@ function highlight() {
   }
 }
 
+/* ---------- widgets ---------- */
+
+const WIDGET_KINDS = ["clock", "media", "weather", "shortcut", "stats", "text"];
+
+function widgetSummary(widget) {
+  switch (widget.kind) {
+    case "clock":
+      return widget.format === "24h" ? "24h" : "12h";
+    case "media":
+      return "now playing";
+    case "weather":
+      return widget.label || `${widget.lat}, ${widget.lon}`;
+    case "shortcut":
+      return widget.label || widget.uri;
+    case "stats":
+      return ["cpu", "ram", "disk"]
+        .filter((m) => widget[`show_${m}`])
+        .join(" · ");
+    case "text":
+      return `“${widget.text}”`;
+    default:
+      return "";
+  }
+}
+
+function renderWidgets(widgets) {
+  const list = document.getElementById("widget-list");
+  list.replaceChildren();
+  widgets.forEach((widget, index) => {
+    const row = el("div", "widget-row");
+    row.append(
+      el("span", "widget-kind", widget.kind),
+      el("span", "widget-summary dim", widgetSummary(widget))
+    );
+    const actions = el("div", "widget-actions");
+    const button = (label, title, disabled, onClick) => {
+      const b = el("button", "widget-action", label);
+      b.type = "button";
+      b.title = title;
+      b.disabled = disabled;
+      b.addEventListener("click", onClick);
+      actions.append(b);
+    };
+    button("↑", "Move up", index === 0, () =>
+      invoke("widget_move", { index, up: true })
+    );
+    button("↓", "Move down", index === widgets.length - 1, () =>
+      invoke("widget_move", { index, up: false })
+    );
+    button("✕", "Remove", false, () => invoke("widget_remove", { index }));
+    row.append(actions);
+    list.append(row);
+  });
+  if (!widgets.length) {
+    list.append(el("div", "widget-summary dim", "No widgets — add one below."));
+  }
+}
+
+const addRow = document.getElementById("widget-add");
+for (const kind of WIDGET_KINDS) {
+  const b = el("button", "widget-add-button", `+ ${kind}`);
+  b.type = "button";
+  b.addEventListener("click", () => invoke("widget_add", { kind }));
+  addRow.append(b);
+}
+
 document.getElementById("open-config").addEventListener("click", () => {
   if (configDir) invoke("open_shortcut", { uri: configDir });
 });
@@ -95,6 +161,7 @@ if (tauri) {
     configDir = state.config_dir;
     currentBackground = state.background.path || "";
     highlight();
+    renderWidgets(state.widgets);
   });
   invoke("frontend_ready");
   invoke("list_backgrounds").then((list) => {
