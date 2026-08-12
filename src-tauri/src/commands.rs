@@ -66,6 +66,13 @@ where
     .map_err(|e| e.to_string())?
 }
 
+/// Manual "Check for updates" from the customization window. Progress and
+/// outcome arrive as `update-status` events; concurrent checks are deduped.
+#[tauri::command]
+pub fn update_check(app: AppHandle) {
+    crate::check_for_update(app);
+}
+
 /// The webview announces it has loaded and wants the full current state.
 #[tauri::command]
 pub fn frontend_ready(app: AppHandle) {
