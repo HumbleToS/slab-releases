@@ -1,6 +1,37 @@
-node_modules/
+# Build output
 target/
-src-tauri/gen/schemas/
 dist/
+src-tauri/gen/schemas/
+src-tauri/target/
+
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Release artifacts (published to GitHub Releases, not tracked)
 latest.json
+*.exe
+*.msi
+*.nsis.zip
+*.sig
+
+# Local-only notes (names people/machines; never pushed)
 HUMAN-TODO.md
+
+# Logs & debug
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# Editors
+.vscode/*
+!.vscode/extensions.json
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
